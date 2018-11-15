@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 	"net/url"
+	"time"
 )
 
 const baseURL string = "https://api.themoviedb.org/3"
@@ -93,9 +93,15 @@ func getTmdb(url string, payload interface{}) (interface{}, error) {
 
 	<-blocker
 
-	res, err := httpRequest.Get(url)
-	if err != nil { // HTTP connection error
-		return payload, err
+	var res *http.Response
+	var err error
+	for {
+		res, err = httpRequest.Get(url)
+		if err != nil { // HTTP connection error
+			if res.StatusCode != 449 {
+				return payload, err
+			}
+		}
 	}
 
 	defer res.Body.Close() // Clean up
@@ -150,12 +156,11 @@ func getHttpClientWithProxy(proxy Proxy) http.Client {
 	return http.Client{
 		Transport: &http.Transport{
 			Proxy: http.ProxyURL(makeProxyUrl(proxy)),
-
 		},
 	}
 }
 
-func makeProxyUrl(proxy Proxy) (*url.URL) {
+func makeProxyUrl(proxy Proxy) *url.URL {
 	proxyUrl := ""
 	if proxy.Auth {
 		proxyUrl = fmt.Sprintf("https://%s:%s@%s:%s",
